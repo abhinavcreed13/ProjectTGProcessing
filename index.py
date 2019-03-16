@@ -10,9 +10,9 @@ if __name__ == '__main__':
         ttw_data = json.loads(ttw_json_file.read())
 
     plt.figure()
-    dpmanager = DataPlotManager()
-    dpmanager.plotMGgrid(plt, mg_data)
-    dpmanager.plotTwitterDataPoints(plt, ttw_data)
+    dp_manager = DataPlotManager()
+    dp_manager.plotMGgrid(plt, mg_data)
+    dp_manager.plotTwitterDataPoints(plt, ttw_data)
     plt.show()
     x = 0
 
