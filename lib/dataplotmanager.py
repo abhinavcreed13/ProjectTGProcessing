@@ -4,7 +4,6 @@ class DataPlotManager:
         for mgobj in mg_grid_data["features"]:
             id = mgobj["properties"]["id"]
             coordinates = mgobj["geometry"]["coordinates"][0]
-            coordinates.append(coordinates[0])
             xs, ys = zip(*coordinates)
             xt = (coordinates[1][0] + coordinates[3][0]) / 2
             yt = (coordinates[1][1] + coordinates[3][1]) / 2
