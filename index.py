@@ -14,3 +14,5 @@ if __name__ == '__main__':
     dpmanager.plotMGgrid(plt, mg_data)
     dpmanager.plotTwitterDataPoints(plt, ttw_data)
     plt.show()
+    x = 0
+
