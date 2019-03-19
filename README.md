@@ -6,4 +6,6 @@
 
 ### Running
 
-`python index.py`
+`python index.py -d data/tTwp.json -tp`
+
+`python index.py -d data/tTwp.json -th`
