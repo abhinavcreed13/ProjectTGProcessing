@@ -1,6 +1,7 @@
 import json
 import matplotlib.pyplot as plt
 from lib.dataplotmanager import DataPlotManager
+from lib.datapreprocessing import DataPreProcessing
 
 if __name__ == '__main__':
     with open('data/mG.json', encoding="utf8") as mg_json_file:
@@ -11,6 +12,8 @@ if __name__ == '__main__':
 
     plt.figure()
     dp_manager = DataPlotManager()
+    pp_manager = DataPreProcessing()
+    pp_manager.rem_missing_coordinates(ttw_data)
     dp_manager.plotMGgrid(plt, mg_data)
     dp_manager.plotTwitterDataPoints(plt, ttw_data)
     plt.show()
