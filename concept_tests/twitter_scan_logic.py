@@ -92,26 +92,27 @@ def leader_node_handler(comm, file_name, search_type, search_query, melboure_gri
     # We will add the data from Helper process to this once they have finished the analysis
     final_results = twitter_json_parser(rank, file_name, size, search_type, search_query, melboure_grid_data)
 
-    # # if multicore then Leader needs to communicate with processes and collect their analyzed data
-    # if size > 1:
-    #     # Use the communicator to give instruction to Helpers to provide the data back
-    #     helper_results = leaders_helper_communicator(comm)
-    #
-    #     # Collect all the data from Helpers in the final_results
-    #     for helper_data in helper_results:
-    #
-    #         # loop on key value pair and add the entries
-    #         for dkey, dval in helper_data.items():
-    #             final_results[dkey] = final_results.setdefault(dkey, 0) + dval
-    #
-    #     # Turn everything off since we have got the data from all the processes
-    #     # Except for the master. It is but obvious, still need to code as such.
-    #     for i in range(size - 1):
-    #         # Appreciate them and wave the process dasvidaniya
-    #         comm.send('Thanks a ton for all the hard work. Now exit and rest.', dest=(i + 1), tag=(i + 1))
-    #
-    # # Print the final result using display_final_output
-    # display_final_output(final_results, search_type, search_query)
+    # if multicore then Leader needs to communicate with processes and collect their analyzed data
+    if size > 1:
+        # Use the communicator to give instruction to Helpers to provide the data back
+        helper_results = leaders_helper_communicator(comm)
+
+        # Collect all the data from Helpers in the final_results
+        for helper_data in helper_results:
+
+            # loop on key value pair and add the entries
+            for dkey, dval in helper_data.items():
+                final_results[dkey] = final_results.setdefault(dkey, 0) + dval
+
+        # Turn everything off since we have got the data from all the processes
+        # Except for the master. It is but obvious, still need to code as such.
+        for i in range(size - 1):
+            # Appreciate them and wave the process dasvidaniya
+            comm.send('Thanks a ton for all the hard work. Now exit and rest.', dest=(i + 1), tag=(i + 1))
+    print("Final Data :", end="")
+    print(final_results)
+    # Print the final result using display_final_output
+    #display_final_output(final_results, search_type, search_query)
 
 
 def helper_node_handler(comm, file_name, search_type, search_query, melboure_grid_data):
@@ -123,20 +124,20 @@ def helper_node_handler(comm, file_name, search_type, search_query, melboure_gri
     # Helper nodes will store data and send it back to Leader when asked for
     helper_results = twitter_json_parser(rank, file_name, size, search_type, search_query, melboure_grid_data)
 
-    # # Now that we have our results/counts. We wait for for Leader's further instructions.
-    # while True:
-    #     in_comm = comm.recv(source=LEADER_RANK, tag=rank)
-    #
-    #     # Check if instruction has been sent from Leader.
-    #     # It must be "Please give me the analyzed data."
-    #     # or 'Thanks a ton for all the hard work. Now exit and rest.' .. in string format
-    #     if isinstance(in_comm, str):
-    #         if in_comm in ('Please give me the analyzed data.'):
-    #             # Send data back to the Leader. He said pleases
-    #             # print("Process: ", rank, " sending back ", len(counts), " items") #testing
-    #             comm.send(helper_results, dest=LEADER_RANK, tag=LEADER_RANK)
-    #         elif in_comm in ('Thanks a ton for all the hard work. Now exit and rest.'):
-    #             exit(0)
+    # Now that we have our results/counts. We wait for for Leader's further instructions.
+    while True:
+        in_comm = comm.recv(source=LEADER_RANK, tag=rank)
+
+        # Check if instruction has been sent from Leader.
+        # It must be "Please give me the analyzed data."
+        # or 'Thanks a ton for all the hard work. Now exit and rest.' .. in string format
+        if isinstance(in_comm, str):
+            if in_comm in ('Please give me the analyzed data.'):
+                # Send data back to the Leader. He said pleases
+                # print("Process: ", rank, " sending back ", len(counts), " items") #testing
+                comm.send(helper_results, dest=LEADER_RANK, tag=LEADER_RANK)
+            elif in_comm in ('Thanks a ton for all the hard work. Now exit and rest.'):
+                exit(0)
 
 
 # Find the grid data from the JSON
@@ -154,7 +155,7 @@ def melbourne_grid_json_parser(gird_data_path):
 
 
 # In case the user is not able to figure out the input. Give them hints. Also known as 'HELP'.
-def print_usage():
+def search_help():
     print('How to use: python <program name> -i <JSON data file path> [opts] ')
     print('Opts are:')
     print('  -[tms] <query>       flag to search topics, mentions or search')
@@ -173,13 +174,13 @@ def read_arguments(arguments):
         opts, args = getopt.getopt(arguments, "hi:tms:")
     except getopt.GetoptError as error:
         print(error)
-        print_usage()
+        search_help()
         sys.exit(2)
     # If arguments were read then check if it makes sense.
     for opt, arg in opts:
         if opt == '-h':
             # if user asked for help
-            print_usage()
+            search_help()
             sys.exit()
         elif opt in "-i":
             # User provides the path of the JSON file it wants to be processed
