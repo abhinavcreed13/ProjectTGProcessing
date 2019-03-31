@@ -1,4 +1,4 @@
-import ijson
+# import ijson
 import json
 # import memory_profiler
 from mpi4py import MPI
@@ -14,12 +14,12 @@ def parse_json_line_by_line(melb_grid_data, json_filename):
     rank = comm.Get_rank()
     size = comm.Get_size()
     # file = open('output_' + str(rank) + '.txt', 'w')
-    print('start rank:' + str(rank))
-    print('size:' + str(size))
+    #print('start rank:' + str(rank))
+    #print('size:' + str(size))
     # file.write('start rank:' + str(rank) + '\n')
     # file.write('size:' + str(size) + '\n')
     region_post_count = {}
-    with open(json_filename) as input_file:
+    with open(json_filename, encoding="utf8") as input_file:
         # load json iteratively
         for line_num, line in enumerate(input_file):
             if line_num % size == rank:
@@ -48,7 +48,7 @@ def parse_json_line_by_line(melb_grid_data, json_filename):
                     }
 
                     # file.write(str(ret))
-                    region_key = get_region_from_tweet(melb_grid_data, ret, rank, None)
+                    region_key = get_region_from_tweet(melb_grid_data, ret)
                     if region_key is not None:
                         if region_key in region_post_count:
                             region_post_count[region_key] = region_post_count[region_key] + 1
@@ -60,27 +60,41 @@ def parse_json_line_by_line(melb_grid_data, json_filename):
                     # print('non parsable line')
                     pass
     # file.close()
+    print(rank, ":", end="")
     print(region_post_count)
 
-def get_region_from_tweet(melb_grid_data, tweet_obj, rank, file):
-    # print(melb_grid_data)
-    for reg_key in melb_grid_data.keys():
-        # print('rank:', rank, reg_key)
-        reg_obj = melb_grid_data[reg_key]
+def get_region_from_tweet(melboure_grid_data, tweet_obj):
+    # Loop on all the Gird Data and find the region tweet belongs to
+    for reg_key in melboure_grid_data.keys():
+        reg_obj = melboure_grid_data[reg_key]
         try:
-            x_coor = tweet_obj['coordinates'][0]
-            y_coor = tweet_obj['coordinates'][1]
-            # file.write('key: '+reg_key)
-            # file.write("(x,y): "+str(x_coor)+','+str(y_coor)+'\n')
-            # file.write("(xmin,xmax):"+str(reg_obj['xmin'])+","+str(reg_obj['xmax'])+'\n')
-            # file.write("(ymin,ymax):" + str(reg_obj['ymin']) + "," + str(reg_obj['ymax']) + '\n')
-            if x_coor >= reg_obj['xmin'] and x_coor <= reg_obj['xmax']:
-                if y_coor >= reg_obj['ymin'] and y_coor <= reg_obj['ymax']:
-                    # file.write('found in: '+reg_key)
-                    return reg_key
+            x_coordinate = tweet_obj['coordinates'][0]
+            y_coordinate = tweet_obj['coordinates'][1]
+            if reg_obj['xmin'] <= x_coordinate <= reg_obj['xmax'] and reg_obj['ymin'] <= y_coordinate <= reg_obj['ymax']:
+                return reg_key
         except:
             return None
     return None
+
+# def get_region_from_tweet(melb_grid_data, tweet_obj, rank, file):
+#     # print(melb_grid_data)
+#     for reg_key in melb_grid_data.keys():
+#         # print('rank:', rank, reg_key)
+#         reg_obj = melb_grid_data[reg_key]
+#         try:
+#             x_coor = tweet_obj['coordinates'][0]
+#             y_coor = tweet_obj['coordinates'][1]
+#             # file.write('key: '+reg_key)
+#             # file.write("(x,y): "+str(x_coor)+','+str(y_coor)+'\n')
+#             # file.write("(xmin,xmax):"+str(reg_obj['xmin'])+","+str(reg_obj['xmax'])+'\n')
+#             # file.write("(ymin,ymax):" + str(reg_obj['ymin']) + "," + str(reg_obj['ymax']) + '\n')
+#             if x_coor >= reg_obj['xmin'] and x_coor <= reg_obj['xmax']:
+#                 if y_coor >= reg_obj['ymin'] and y_coor <= reg_obj['ymax']:
+#                     # file.write('found in: '+reg_key)
+#                     return reg_key
+#         except:
+#             return None
+#     return None
 
 if __name__ == '__main__':
     # py_json_parse('data/tTwp.json')
