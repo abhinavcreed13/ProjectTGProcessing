@@ -1,13 +1,16 @@
-###  mpiexec /np 8 python concept_tests/twitter_scan_logic.py -i data/smallTwitter.json
+###  mpiexec /np 8 python concept_tests/twitter_scanner.py -i data/smallTwitter.json
 # IMPORTANT: Use the above code to execute the program
 
+
 # Import mpi so we can run on more than one node and processor. That is what our project requires.
-from mpi4py import MPI
-
-import sys, getopt
-
+import getopt
 # Import regular expressions to look for topics and mentions, json to parse tweet data
-import re, json, operator
+import json
+import operator
+import re
+import sys
+
+from mpi4py import MPI
 
 # Constants
 TOPIC_SEARCH_REGEX = '#\w+'
@@ -18,11 +21,14 @@ def print_matches(matches, squery):
   print(squery, " was found ", matches.setdefault(squery,0), " times.")
 
 def print_mentions(mentions):
-  sorted_counts = sorted(mentions.items(), key=operator.itemgetter(1))
-  print("The top ten users mentioned are:")
-  for mention in reversed(sorted_counts[-10:]):
-    user, times = mention
-    print(user, ":", times)
+    try:
+        sorted_counts = sorted(mentions.items(), key=operator.itemgetter(1))
+        print("The top ten users mentioned are:")
+        for mention in reversed(sorted_counts[-10:]):
+            user, times = mention
+            print(user, ":", times)
+    except:
+        pass
 
 def print_topics(topics):
   sorted_counts = sorted(topics.items(), key=operator.itemgetter(1))
@@ -31,13 +37,8 @@ def print_topics(topics):
     topic, times = topic
     print(topic, ":", times)
 
-def display_final_output(final_results, search_type, search_query):
-    if search_type in ("mentions"):
-        print_mentions(final_results)
-    elif search_type in ("topic"):
-        print_topics(final_results)
-    elif stype in ("string_search"):
-        print_matches(final_results, search_query)
+def display_final_output(final_results):
+    print_mentions(final_results)
 
 def count_regex(tweet, regex):
   # We want to find the most mentioned @user in the dataset
@@ -94,9 +95,9 @@ def process_tweets(rank, input_file, processes, stype, squery):
       print("Could not read line in csv.")
   return occurences
 
-def twitter_json_parser(rank, file_name, size, search_type, search_query, melboure_grid_data):
+def twitter_json_parser(rank, file_name, size, melboure_grid_data):
     region_post_count = {}
-
+    hashtags_count = {}
     # Open the main Twitter files
     with open(file_name, encoding="utf8") as input_file:
         # Load data one line a time
@@ -118,8 +119,13 @@ def twitter_json_parser(rank, file_name, size, search_type, search_query, melbou
                             'coordinates': line_obj['doc']['coordinates']['coordinates'],
                             'hashtags': line_obj['doc']['entities']['hashtags']
                         }
-
-                        region_key = get_region_from_tweet(melboure_grid_data, ret, rank)
+                        for hashtags in ret["hashtags"]:
+                            hashtags_count[hashtags['text'].encode('utf8').strip()] = hashtags_count.setdefault(hashtags['text'].encode('utf8').strip(), 0) + 1
+                        # if line_num < 40 and rank == 0:
+                        #     print("JSON Data", hashtags_count)
+                        # if line_num < 40 and rank == 0:
+                        #     print("JSON Data", ret)
+                        region_key = get_region_from_tweet(melboure_grid_data, ret)
                         if region_key is not None:
                             if region_key in region_post_count:
                                 region_post_count[region_key] = region_post_count[region_key] + 1
@@ -131,10 +137,17 @@ def twitter_json_parser(rank, file_name, size, search_type, search_query, melbou
                     pass
     print(rank, ":", end="")
     print(region_post_count)
-    return region_post_count
+    try:
+        if rank == 1:
+            print("Hashtag Data", hashtags_count)
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        pass
+    return hashtags_count
+    #return region_post_count
 
 
-def get_region_from_tweet(melboure_grid_data, tweet_obj, rank):
+def get_region_from_tweet(melboure_grid_data, tweet_obj):
     # Loop on all the Gird Data and find the region tweet belongs to
     for reg_key in melboure_grid_data.keys():
         reg_obj = melboure_grid_data[reg_key]
@@ -162,14 +175,14 @@ def leaders_helper_communicator(comm):
     return results
 
 
-def leader_node_handler(comm, file_name, search_type, search_query, melboure_grid_data):
+def leader_node_handler(comm, file_name, melboure_grid_data):
     # Find the process info
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     # Parse the JSON file line by line and perform the analysis and store in final result
     # We will add the data from Helper process to this once they have finished the analysis
-    final_results = twitter_json_parser(rank, file_name, size, search_type, search_query, melboure_grid_data)
+    final_results = twitter_json_parser(rank, file_name, size, melboure_grid_data)
 
     # if multicore then Leader needs to communicate with processes and collect their analyzed data
     if size > 1:
@@ -191,17 +204,17 @@ def leader_node_handler(comm, file_name, search_type, search_query, melboure_gri
     print("Final Data :", end="")
     print(final_results)
     # Print the final result using display_final_output
-    display_final_output(final_results, search_type, search_query)
+    display_final_output(final_results)
 
 
-def helper_node_handler(comm, file_name, search_type, search_query, melboure_grid_data):
+def helper_node_handler(comm, file_name, melboure_grid_data):
     # Find the process info
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     # Parse the JSON file line by line and perform the analysis and return the results
     # Helper nodes will store data and send it back to Leader when asked for
-    helper_results = twitter_json_parser(rank, file_name, size, search_type, search_query, melboure_grid_data)
+    helper_results = twitter_json_parser(rank, file_name, size, melboure_grid_data)
 
     # Now that we have our results/counts. We wait for for Leader's further instructions.
     while True:
@@ -244,9 +257,7 @@ def search_help():
 
 def read_arguments(arguments):
     # Initialise variables with default values
-    file_name = 'data/smallTwitter.json'
-    search_type = 'mentions'
-    search_query = ''
+    file_name = ''
 
     # Try to read in arguments
     try:
@@ -264,19 +275,9 @@ def read_arguments(arguments):
         elif opt in "-i":
             # User provides the path of the JSON file it wants to be processed
             file_name = arg
-        elif opt in "-m":
-            # User wants to know who was mentioned most times in tweets in descending order
-            search_type = 'mentions'
-        elif opt in "-t":
-            # User wants to know which #hashtag was mentioned most times in tweets in descending order
-            search_type = 'topic'
-        elif opt in "-s":
-            # Search for specific string that user is looking for and has provided in arguments
-            search_type = 'string_search'
-            search_query = arg
 
     # Return all the arguments
-    return file_name, search_type, search_query
+    return file_name
 
 
 # This is where everything start
@@ -285,7 +286,7 @@ if __name__ == '__main__':
     arguments = sys.argv[1:]
 
     # Pick up the inputs(arguments) from user and check what she/he wants
-    file_name, search_type, search_query = read_arguments(arguments)
+    file_name = read_arguments(arguments)
 
     # Initiate MPI programming and get rank details of each process.
     # This will help us in deciding if the process is leader or helper
@@ -299,7 +300,7 @@ if __name__ == '__main__':
 
     if rank == 0:
         # Leader Node - I Assign work and do some work too simultaneously :)
-        leader_node_handler(comm, file_name, search_type, search_query, melbourne_grid_data)
+        leader_node_handler(comm, file_name, melbourne_grid_data)
     else:
         # Helper Node - I can help with processing and get the processing get done quickly :D
-        helper_node_handler(comm, file_name, search_type, search_query, melbourne_grid_data)
+        helper_node_handler(comm, file_name, melbourne_grid_data)
