@@ -1,101 +1,63 @@
 ###  mpiexec /np 8 python concept_tests/twitter_scanner.py -i data/smallTwitter.json
+###  mpiexec /np 8 python concept_tests/twitter_scanner.py -i data/tinyTwitter.json
 # IMPORTANT: Use the above code to execute the program
 
-
-# Import mpi so we can run on more than one node and processor. That is what our project requires.
 import getopt
-# Import regular expressions to look for topics and mentions, json to parse tweet data
 import json
 import operator
-import re
 import sys
+import time
+import heapq
 
 from mpi4py import MPI
+from collections import Counter
+
+start = time.time()
 
 # Constants
-TOPIC_SEARCH_REGEX = '#\w+'
-MENTION_SEARCH_REGEX = '@\w+'
 LEADER_RANK = 0
+REGION_INFO = 1
+HASHTAGS_INFO = 2
 
-def print_matches(matches, squery):
-  print(squery, " was found ", matches.setdefault(squery,0), " times.")
-
-def print_mentions(mentions):
-    try:
-        sorted_counts = sorted(mentions.items(), key=operator.itemgetter(1))
-        print("The top ten users mentioned are:")
-        for mention in reversed(sorted_counts[-10:]):
-            user, times = mention
-            print(user, ":", times)
-    except:
-        pass
-
-def print_topics(topics):
-  sorted_counts = sorted(topics.items(), key=operator.itemgetter(1))
-  print("The top ten trending topics are:")
-  for topic in reversed(sorted_counts[-10:]):
-    topic, times = topic
-    print(topic, ":", times)
-
-def display_final_output(final_results):
-    print_mentions(final_results)
-
-def count_regex(tweet, regex):
-  # We want to find the most mentioned @user in the dataset
-  counts = {}
-  occurences = re.findall(regex, tweet['text'])
-  for occurence in occurences:
-    counts[occurence] = counts.setdefault(occurence,0) + 1
-  return counts
-
-def trending_topics(tweet):
-  # We want to find the most mentioned #word in the dataset
-  return count_regex(tweet, TOPIC_REGEX)
-
-def user_mentions(tweet):
-  # We want to find the most mentioned @user in the dataset
-  return count_regex(tweet, MENTION_REGEX)
-
-def tweet_to_json(tweet):
-  # Remove poorly formatted urls and new line / carriage returns
-  tweet = re.sub('"source":"<a.*?>.*?</a>"','"source":""',tweet)
-  tweet = re.sub("(\r|\n)+", '', tweet)
-  tweet = json.loads(tweet)
-  return tweet
-
-def process_tweet(counts, stype, squery, tweet):
-    results = []
-    if stype in ("mentions"):
-        results = user_mentions(tweet)
-    elif stype in ("topic"):
-        results = trending_topics(tweet)
-    elif stype in ("string_search"):
-        regex = '\\b' + squery + '\\b'
-        results = count_regex(tweet, regex)
-    for k, v in results.items():
-        counts[k] = counts.setdefault(k, 0) + v
-    return counts
+def print_regioncounts(regioncounts):
+    sorted_counts = sorted(regioncounts.items(), key=operator.itemgetter(1))
+    print("Regions with their no of tweets in Descending order:")
+    for regioncounts in reversed(sorted_counts):
+        key, times = regioncounts
+        print(key, " : ", times)
+    end = time.time()
+    print(end - start)
 
 
-def process_tweets(rank, input_file, processes, stype, squery):
-  with open(input_file) as f:
-    rows = csv.DictReader(f)
-    occurences = {}
-    # Send tweets to slave processes
-    try:
-      for i, line in enumerate(rows):
-        if i%processes == rank:
-          tweet = line['value']
-          try:
-            tweet = tweet_to_json(tweet)
-            occurences = process_tweet(occurences, stype, squery, tweet)
-          except ValueError:
-            print("Malformed JSON in tweet ", i)
-    except csv.Error:
-      print("Could not read line in csv.")
-  return occurences
+def print_hashtagcounts(final_results, final_hashs):
+    flag = 0
+    sorted_results = sorted(final_results.items(), key=operator.itemgetter(1))
+    print("Regions with top five tweets in Descending order:")
+    for region in reversed(sorted_results):
+        sort_hash = heapq.nlargest(5, final_hashs[region[0]].items(), key=lambda x: x[1])
+        # sort_hash = list(Counter(final_hashs[region[0]]).most_common(5))
+        print("\n", region[0],": (", end="")
+        for hashes in sort_hash:
+            key, times = hashes
+            if flag == 0:
+                flag = 1
+            else:
+                print(",",end="")
 
-def twitter_json_parser(rank, file_name, size, melboure_grid_data):
+            print("('", key.decode('utf8').strip(), "', ", times,")", end="")
+        print(")")
+        flag = 0
+    end = time.time()
+    print("\n", end - start)
+
+def display_final_output(final_results, search_type):
+    print_regioncounts(final_results)
+
+def display_all_output(final_results, final_hashs, search_type):
+    print_hashtagcounts(final_results, final_hashs)
+
+
+def twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type):
     region_post_count = {}
     hashtags_count = {}
     # Open the main Twitter files
@@ -119,32 +81,47 @@ def twitter_json_parser(rank, file_name, size, melboure_grid_data):
                             'coordinates': line_obj['doc']['coordinates']['coordinates'],
                             'hashtags': line_obj['doc']['entities']['hashtags']
                         }
-                        for hashtags in ret["hashtags"]:
-                            hashtags_count[hashtags['text'].encode('utf8').strip()] = hashtags_count.setdefault(hashtags['text'].encode('utf8').strip(), 0) + 1
-                        # if line_num < 40 and rank == 0:
-                        #     print("JSON Data", hashtags_count)
-                        # if line_num < 40 and rank == 0:
-                        #     print("JSON Data", ret)
                         region_key = get_region_from_tweet(melboure_grid_data, ret)
                         if region_key is not None:
                             if region_key in region_post_count:
                                 region_post_count[region_key] = region_post_count[region_key] + 1
                             else:
                                 region_post_count[region_key] = 1
+                        if search_type == "hashtags":
+                            if region_key in hashtags_count:
+                                hashtags_data = hashtags_count[region_key]
+                            else:
+                                hashtags_data = {}
+
+                            for hashtags in ret["hashtags"]:
+                                hashtags_data[hashtags['text'].encode('utf8').lower()] = hashtags_data.setdefault(hashtags['text'].encode('utf8').lower(), 0) + 1
+
+                            hashtags_count[region_key] = hashtags_data
+
+                            # if hashtags['text'].encode('utf8').lower() in hashtags_data:
+                            #     hashtags_data[hashtags['text'].encode('utf8').lower()] = hashtags_data.setdefault(
+                            #         hashtags['text'].encode('utf8').lower(), 0) + 1
+                            # else:
+                            #     hashtags_data[hashtags['text'].encode('utf8').lower()] = 1
+
+                            # for hashtags in ret["hashtags"]:
+                            #     hashtags_count[hashtags['text'].encode('utf8').strip()] = hashtags_count.setdefault(
+                            #         hashtags['text'].encode('utf8').strip(), 0) + 1
                 except Exception as e:
                     # non parsable line
                     # print('non parsable line')
                     pass
-    print(rank, ":", end="")
-    print(region_post_count)
-    try:
-        if rank == 1:
-            print("Hashtag Data", hashtags_count)
-    except:
-        print("Unexpected error:", sys.exc_info()[0])
-        pass
-    return hashtags_count
-    #return region_post_count
+    if search_type == "regions":
+        # print(rank, ":", end="")
+        # print(region_post_count)
+        return region_post_count
+    elif search_type == "hashtags":
+        # print(rank, ":", end="")
+        # print(hashtags_count)
+        # if rank == 0:
+        #     print("HashTag File Data", hashtags_count)
+        # print('hashtags_count len:', rank, hashtags_count.values())
+        return region_post_count, hashtags_count
 
 
 def get_region_from_tweet(melboure_grid_data, tweet_obj):
@@ -163,7 +140,9 @@ def get_region_from_tweet(melboure_grid_data, tweet_obj):
 
 def leaders_helper_communicator(comm):
     processes = comm.Get_size()
-    results = []
+    mid_results = []
+    mid_hashs = {}
+    mid_hashs_all = {}
     # Now ask all processes except oursevles to return counts
     for i in range(processes - 1):
         # Send request to slaves to send back the data
@@ -171,55 +150,96 @@ def leaders_helper_communicator(comm):
     for i in range(processes - 1):
         # Receive data the data sent from helpers and append it in the leaders file
         # and then return the final count
-        results.append(comm.recv(source=(i + 1), tag=LEADER_RANK))
-    return results
+        mid_results.append(comm.recv(source=(i + 1), tag=REGION_INFO))
+        if search_type == "hashtags":
+            mid_hashs = comm.recv(source=(i + 1), tag=HASHTAGS_INFO)
+            newcounter = Counter()
+            for hashs in mid_hashs:
+                if hashs in mid_hashs_all:
+                    newcounter = Counter(mid_hashs[hashs]) + Counter(mid_hashs_all[hashs])
+                    mid_hashs_all[hashs] = dict(newcounter)
+                else:
+                    mid_hashs_all[hashs] = mid_hashs[hashs]
+
+            # final_hashs[dkey] = hashtags_data
+            # print("mid_hashs type: ", type(mid_hashs))
+            # if i+1 == 1:
+            #     print('mid_hashs len:', i + 1, mid_hashs)
+    if search_type == "hashtags":
+        return mid_results, mid_hashs_all
+    else:
+        return mid_results
 
 
-def leader_node_handler(comm, file_name, melboure_grid_data):
+def leader_node_handler(comm, file_name, melboure_grid_data, search_type):
     # Find the process info
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     # Parse the JSON file line by line and perform the analysis and store in final result
     # We will add the data from Helper process to this once they have finished the analysis
-    final_results = twitter_json_parser(rank, file_name, size, melboure_grid_data)
+    # final_results = twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type)
+    if search_type == "hashtags":
+        final_results, final_hashs = twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type)
+    else:
+        final_results = twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type)
 
     # if multicore then Leader needs to communicate with processes and collect their analyzed data
     if size > 1:
         # Use the communicator to give instruction to Helpers to provide the data back
-        helper_results = leaders_helper_communicator(comm)
+        # helper_results = leaders_helper_communicator(comm)
+        if search_type == "hashtags":
+            helper_results, helper_hashs = leaders_helper_communicator(comm)
+        else:
+            helper_results = leaders_helper_communicator(comm)
+
 
         # Collect all the data from Helpers in the final_results
         for helper_data in helper_results:
-
             # loop on key value pair and add the entries
             for dkey, dval in helper_data.items():
                 final_results[dkey] = final_results.setdefault(dkey, 0) + dval
+                if search_type == "hashtags":
+                    # print("hashtags_data count: ", type(final_hashs))
+                    if dkey in helper_hashs:
+                        hashtags_data = final_hashs[dkey]
+                    else:
+                        hashtags_data = {}
+                    for hashs_keys, hashs_val in hashtags_data.items():
+                        hashtags_data[hashs_keys] = hashtags_data.setdefault(hashs_keys, 0) + hashs_val
 
+                    final_hashs[dkey] = hashtags_data
+            # print('final_results len:', rank, final_results)
         # Turn everything off since we have got the data from all the processes
         # Except for the master. It is but obvious, still need to code as such.
         for i in range(size - 1):
             # Appreciate them and wave the process dasvidaniya
             comm.send('Thanks a ton for all the hard work. Now exit and rest.', dest=(i + 1), tag=(i + 1))
-    print("Final Data :", end="")
-    print(final_results)
+    # print("Final Data :", end="")
+    # print(final_results)
     # Print the final result using display_final_output
-    display_final_output(final_results)
+    if search_type == "hashtags":
+        display_all_output(final_results, final_hashs, search_type)
+    else:
+        display_final_output(final_results, search_type)
 
 
-def helper_node_handler(comm, file_name, melboure_grid_data):
+def helper_node_handler(comm, file_name, melboure_grid_data, search_type):
     # Find the process info
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     # Parse the JSON file line by line and perform the analysis and return the results
     # Helper nodes will store data and send it back to Leader when asked for
-    helper_results = twitter_json_parser(rank, file_name, size, melboure_grid_data)
+    if search_type == "hashtags":
+        helper_results, helper_hashs = twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type)
+    else:
+        helper_results = twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type)
 
     # Now that we have our results/counts. We wait for for Leader's further instructions.
     while True:
+        # in_comm = comm.recv(source=LEADER_RANK, tag=rank)
         in_comm = comm.recv(source=LEADER_RANK, tag=rank)
-
         # Check if instruction has been sent from Leader.
         # It must be "Please give me the analyzed data."
         # or 'Thanks a ton for all the hard work. Now exit and rest.' .. in string format
@@ -227,7 +247,9 @@ def helper_node_handler(comm, file_name, melboure_grid_data):
             if in_comm in ('Please give me the analyzed data.'):
                 # Send data back to the Leader. He said pleases
                 # print("Process: ", rank, " sending back ", len(counts), " items") #testing
-                comm.send(helper_results, dest=LEADER_RANK, tag=LEADER_RANK)
+                comm.send(helper_results, dest=LEADER_RANK, tag=REGION_INFO)
+                if search_type == "hashtags":
+                    comm.send(helper_hashs, dest=LEADER_RANK, tag=HASHTAGS_INFO)
             elif in_comm in ('Thanks a ton for all the hard work. Now exit and rest.'):
                 exit(0)
 
@@ -248,16 +270,17 @@ def melbourne_grid_json_parser(gird_data_path):
 
 # In case the user is not able to figure out the input. Give them hints. Also known as 'HELP'.
 def search_help():
-    print('How to use: python <program name> -i <JSON data file path> [opts] ')
-    print('Opts are:')
-    print('  -[tms] <query>       flag to search topics, mentions or search')
-    print('                       by a query string respectively, -s requires')
-    print('                       a search string. (optional, default is mentions).')
-
+    print('How to use:')
+    print('For region counts: mpiexec /np <no of cores> python <program name> -i <JSON data file path>')
+    print("example: mpiexec /np 8 python concept_tests/twitter_scanner.py -i data/smallTwitter.json")
+    print('For hashtag counts: mpiexec /np <no of cores> python <program name> -i <JSON data file path> -t')
+    print("example: mpiexec /np 8 python concept_tests/twitter_scanner.py -i data/smallTwitter.json -t")
+    print("if 'mpiexec /np' does not work use mpirun -np")
 
 def read_arguments(arguments):
     # Initialise variables with default values
     file_name = ''
+    search_type = 'regions'
 
     # Try to read in arguments
     try:
@@ -275,9 +298,11 @@ def read_arguments(arguments):
         elif opt in "-i":
             # User provides the path of the JSON file it wants to be processed
             file_name = arg
-
-    # Return all the arguments
-    return file_name
+        elif opt in "-t":
+            # User provides the path of the JSON file it wants to be processed
+            search_type = "hashtags"
+     # Return all the arguments
+    return file_name, search_type
 
 
 # This is where everything start
@@ -286,7 +311,7 @@ if __name__ == '__main__':
     arguments = sys.argv[1:]
 
     # Pick up the inputs(arguments) from user and check what she/he wants
-    file_name = read_arguments(arguments)
+    file_name, search_type = read_arguments(arguments)
 
     # Initiate MPI programming and get rank details of each process.
     # This will help us in deciding if the process is leader or helper
@@ -300,7 +325,8 @@ if __name__ == '__main__':
 
     if rank == 0:
         # Leader Node - I Assign work and do some work too simultaneously :)
-        leader_node_handler(comm, file_name, melbourne_grid_data)
+        leader_node_handler(comm, file_name, melbourne_grid_data, search_type)
     else:
         # Helper Node - I can help with processing and get the processing get done quickly :D
-        helper_node_handler(comm, file_name, melbourne_grid_data)
+        helper_node_handler(comm, file_name, melbourne_grid_data, search_type)
+
