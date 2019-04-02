@@ -2,6 +2,7 @@
 import json, getopt, sys
 # import memory_profiler
 from mpi4py import MPI
+from collections import ChainMap
 
 # CURRENT BENCHMARK
 # tinyTwitter: real	0m0.278s
@@ -81,16 +82,16 @@ def parse_json_line_by_line(comm, melb_grid_data, json_filename, output_type):
                     pass
 
     region_post_count = sort_tuple(region_post_count)
-    # _w(rank, str(region_post_count), False)
+    _w(rank, str(region_post_count), False)
     # print("rank:" + str(rank) + "||lines_processed:" + str(lines_processed))
     # print("lines_handled:" + str(lines_handled))
-    print("rank: " + str(rank) + ' = ' + str(region_post_count))
-    list_hash_counts = []
-    for key in region_hashtags_count:
-        region_hashtags_count[key] = sort_tuple(region_hashtags_count[key])
-        list_hash_counts.append(len(region_hashtags_count[key]))
-    # _w(rank, str(region_hashtags_count), False)
-    print("rank: " + str(rank) + ' = ' + str(list_hash_counts))
+    # print("rank: " + str(rank) + ' = ' + str(region_post_count))
+    # list_hash_counts = []
+    # for key in region_hashtags_count:
+    #     region_hashtags_count[key] = sort_tuple(region_hashtags_count[key])
+    #     list_hash_counts.append(len(region_hashtags_count[key]))
+    _w(rank, str(region_hashtags_count), False)
+    # print("rank: " + str(rank) + ' = ' + str(region_hashtags_count))
     return (region_post_count, region_hashtags_count)
 
 
@@ -120,63 +121,6 @@ def get_region_from_tweet(melb_grid_data, tweet_obj, rank, file):
                     # _w(rank, 'coordinate found inside region', False)
                     return reg_key
 
-            # if reg_key == 'C2':
-            #     min = reg_obj['xmin']
-            #     max = reg_obj['xmax']
-            #     strv = (str(reg_key) + '=((' + str(float(min)) + ',' + str(float(max)) + '),(' + str(
-            #         float(x_coor)) + ',' + str(
-            #         float(y_coor)) + '))=' + str((x_coor == reg_obj['xmin']) or (x_coor == reg_obj['xmax'])))
-            #     # print(strv)
-            #     _w(rank, strv, False)
-
-            # coordinate found in fixed x and changing y
-            # if (float(x_coor) == float(reg_obj['xmin'])) or (float(x_coor) == float(reg_obj['xmax'])):
-            #     if (float(y_coor) >= float(reg_obj['ymin'])) and (float(y_coor) <= float(reg_obj['ymax'])):
-            #         _w(rank, 'coordinate found in between (fixed x and changing y)', False)
-            #         # _w(rank, 'coordinate found in top-right/left corner', False)
-            #         # _w(rank, 'coordinate found in bottom-right/left corner', False)
-            #         _w(rank, 'reg_key:' + str(reg_key), False)
-            #         if i == 0:
-            #             return reg_key
-            #         elif i != 0:
-            #             next_reg_key = d_keys[i + 1]
-            #             next_reg_obj = melb_grid_data[next_reg_key]
-            #             # in same row
-            #             if float(next_reg_obj['ymin']) == float(reg_obj['ymin']) and float(
-            #                     next_reg_obj['ymax']) == float(reg_obj['ymax']):
-            #                 # choose left box
-            #                 # row check
-            #                 _w(rank, 'Match found->' + next_reg_key, False)
-            #                 return reg_key
-            #             else:
-            #                 return reg_key
-            #         # elif y_coor == reg_obj['ymin']:
-            #         #     # coordinate found in top-right corner
-            #         #     pass
-            #         # elif y_coor == reg_obj['ymax']:
-            #         #     # coordinate found in bottom-right corner
-            #
-            # # coordinate found in fixed y and changing x
-            # if (float(y_coor) == float(reg_obj['ymin'])) or (float(y_coor) == float(reg_obj['ymax'])):
-            #     if (float(x_coor) >= float(reg_obj['xmin'])) and (float(x_coor) <= float(reg_obj['xmax'])):
-            #         _w(rank, 'coordinate found in between (fixed y and changing x)', False)
-            #         # _w(rank, 'coordinate found in top-right/left corner', False)
-            #         # _w(rank, 'coordinate found in bottom-right/left corner', False)
-            #         if i == 0:
-            #             return reg_key
-            #         elif i != 0:
-            #             _w(rank, str(i) + ':' + str(d_keys[i + 1:]), False)
-            #             for next_reg_key in d_keys[i + 1:]:
-            #                 next_reg_obj = melb_grid_data[next_reg_key]
-            #                 # column check
-            #                 if float(next_reg_obj['xmin']) == float(reg_obj['xmin']) and float(
-            #                         next_reg_obj['xmax']) == float(reg_obj[
-            #                                                            'xmax']):
-            #                     # choosing higher one
-            #                     _w(rank, 'Match found->' + next_reg_key, False)
-            #                     return reg_key
-            #                 else:
-            #                     return reg_key
         except Exception as e:
             # print(str(e))
             return None
@@ -191,21 +135,22 @@ def set_hashtags_for_region(tweet_obj, region_key, hashtags_dict, rank):
             # _fR = check_tuple_exists(hashtags_arr, region_key)
             # if _fR is None:
             #     hashtags_arr.append((region_key, None, None))
-            if region_key not in hashtags_dict:
-                hashtags_dict[region_key] = []
+            # if region_key not in hashtags_dict:
+            #     hashtags_dict[region_key] = {}
             # file.write(str(hashtags_dict) + '\n')
             # file.write('h:' + str(tweet_obj['hashtags']) + '\n')
             for tags in tweet_obj['hashtags']:
                 s_key = '#' + tags['text'].lower()
                 # file.write('s_key:' + s_key + '\n')
-                _f = check_tuple_exists(hashtags_dict[region_key], s_key)
-                # _w(rank, '_f:' + str(_f), False)
-                if _f is not None:
-                    new_tup = (_f[1][0], _f[1][1] + 1)
-                    # _w(rank, 'new_tup:' + str(new_tup), False)
-                    hashtags_dict[region_key][_f[0]] = new_tup
+                if region_key + '||' + s_key in hashtags_dict:
+                    hashtags_dict[region_key + '||' + s_key] = hashtags_dict[region_key + '||' + s_key] + 1
+                    # # _w(rank, '_f:' + str(_f), False)
+                    # if _f is not None:
+                    #     new_tup = (_f[1][0], _f[1][1], _f[1][2] + 1)
+                    #     # _w(rank, 'new_tup:' + str(new_tup), False)
+                    #     hashtags_arr[_f[0]] = new_tup
                 else:
-                    hashtags_dict[region_key].append((s_key, 1))
+                    hashtags_dict[region_key + '||' + s_key] = 1
     except Exception as e:
         # print(str(e))
         pass
@@ -251,6 +196,20 @@ def sort_tuple(list_of_tups, level=1):
     # sublist lambda has been used
     list_of_tups.sort(key=lambda x: x[level], reverse=True)
     return list_of_tups
+
+
+def merge_and_delete(list_of_tup, key_1, key_2):
+    new_tup = (key_1, key_2, None)
+    for idx, s_tup in enumerate(list_of_tup):
+        if s_tup[0] == key_1 and s_tup[1] == key_2:
+            _w(0, 's_tup:' + str(s_tup), False)
+            if new_tup[2] is not None:
+                new_tup = (key_1, key_2, new_tup[2] + s_tup[2])
+            else:
+                new_tup = (key_1, key_2, s_tup[2])
+            del list_of_tup[idx]
+    _w(0, 'new_tup:' + str(new_tup), False)
+    return (key_1, (new_tup[1], new_tup[2]), list_of_tup)
 
 
 def parse_arguments(argv):
@@ -308,6 +267,7 @@ def master_node(comm, melbGridObj, data_file, output_type):
             comm.send('kill', dest=(i + 1), tag=(i + 1))
 
         # total_posts
+        # print(str(final_data))
         print('Merging Total Posts')
         for i, tup in enumerate(final_data[0]):
             # _w(0, str(tup), False)
@@ -325,38 +285,89 @@ def master_node(comm, melbGridObj, data_file, output_type):
 
         # hash_tags
         # merger
-        print('Hash Tags Merger')
-        reg_dict = final_data[1]
-        for key in reg_dict:
-            # _w(0, str(reg_dict[key]), False)
-            master_list = reg_dict[key]
-            for child_tup in child_data_arr:
-                child_reg_dict = child_tup[1]
-                if key in child_reg_dict:
-                    child_list = child_reg_dict[key]
-                    master_list = master_list + child_list
+        print('HashTags Merger')
+        master_node_dict = final_data[1]
+        #print(len(master_node_dict))
+        #for data_key in master_node_dict:
+        for child_tuple in child_data_arr:
+            for data_key in child_tuple[1]:
+                if data_key in master_node_dict:
+                    master_node_dict[data_key] = master_node_dict[data_key] + child_tuple[1][data_key]
                 else:
-                    # region found by master nodes which is not present in child nodes
-                    # Assuming data is evenly distributed across nodes
-                    pass
-            reg_dict[key] = master_list
-        # _w(0, str(final_data[1]), False)
+                    master_node_dict[data_key] = child_tuple[1][data_key]
 
-        print('Hash Tags Reducer')
-        # reducer
-        for key in reg_dict:
-            array_of_tuples = reg_dict[key]
-            new_arr_tuples = []
-            for tup in array_of_tuples:
-                new_arr_tuples.append(merge_tuples(array_of_tuples, tup[0], level=0))
-            reg_dict[key] = sort_tuple(new_arr_tuples, level=1)[:5]
+        #print(len(master_node_dict))
+        print('HashTag Reducer')
+        reduced = {}
+        reduced_hash = {}
+        for data_key in master_node_dict:
+            data_arr = data_key.split('||')
+            master_key = data_arr[0]
+            hash_key = data_arr[1]
+            data_val = master_node_dict[data_key]
+            if master_key not in reduced:
+                reduced[master_key] = []
+                reduced_hash[master_key] = []
+                _min = 0
+            else:
+                _min = min(reduced_hash[master_key])
+
+            if data_val >= _min:
+                if len(reduced_hash[master_key]) == 5:
+                    _idx = reduced_hash[master_key].index(_min)
+                    reduced_hash[master_key][_idx] = data_val
+                    reduced[master_key][_idx] = (hash_key, data_val)
+
+            if len(reduced_hash[master_key]) < 5:
+                reduced_hash[master_key].append(data_val)
+                reduced[master_key].append((hash_key, data_val))
+
+        #print(reduced_hash)
+        #print(reduced)
+        for key in reduced:
+            reduced[key] = sort_tuple(reduced[key])
+
     elif size == 1:
         # only 1 thread is running - reducing required
         # hashtags - reducer
-        for key in final_data[1]:
-            final_data[1][key] = sort_tuple(final_data[1][key], level=1)[:5]
+        print('HashTag Reducer')
+        # reducer
+        # hashtags - reducer
+        new_reduced = {}
+        # print(final_data[1])
+        reduced = {}
+        reduced_hash = {}
+        for data_key in final_data[1]:
+            data_arr = data_key.split('||')
+            master_key = data_arr[0]
+            hash_key = data_arr[1]
+            data_val = final_data[1][data_key]
+            if master_key not in reduced:
+                reduced[master_key] = []
+                reduced_hash[master_key] = []
+                _min = 0
+            else:
+                _min = min(reduced_hash[master_key])
 
+            if data_val >= _min:
+                if len(reduced_hash[master_key]) == 5:
+                    _idx = reduced_hash[master_key].index(_min)
+                    reduced_hash[master_key][_idx] = data_val
+                    reduced[master_key][_idx] = (hash_key, data_val)
+
+            if len(reduced_hash[master_key]) < 5:
+                reduced_hash[master_key].append(data_val)
+                reduced[master_key].append((hash_key, data_val))
+
+        for key in reduced:
+            reduced[key] = sort_tuple(reduced[key])
+
+    final_data = (final_data[0], reduced)
+    # final_data = (final_data[0], new_reduced)
     print('Printing final output')
+    # print(final_data[0])
+    # print(new_reduced)
+    # print(str(sort_tuple(new_reduced, level=2)[:5]))
     final_output_printer(final_data)
 
 
@@ -367,8 +378,8 @@ def final_output_printer(final_data):
         print(data_tuple[0] + ':', "{:,}".format(data_tuple[1]), 'posts')
     print('')
     print('Top 5 hashtags in each grid cells:')
-    for data_key in final_data[1]:
-        print(data_key + ':', '(' + str(final_data[1][data_key])[1:-1] + ')')
+    for data_tuple in final_data[0]:
+        print(data_tuple[0] + ':', '(' + str(final_data[1][data_tuple[0]])[1:-1] + ')')
 
 
 def child_node(comm, melbGridObj, data_file, output_type):
