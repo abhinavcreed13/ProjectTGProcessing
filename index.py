@@ -1,6 +1,7 @@
 import json, sys, getopt
 import matplotlib.pyplot as plt
 from lib.dataplotmanager import DataPlotManager
+from lib.datapreprocessing import DataPreProcessing
 
 def parse_arguments(argv):
   # Initialise Variables
@@ -38,6 +39,8 @@ def main(argv):
     # process file
     plt.figure()
     dp_manager = DataPlotManager()
+    pp_manager = DataPreProcessing()
+    pp_manager.rem_missing_coordinates(ttw_data)
     dp_manager.plotMGgrid(plt, mg_data)
     dp_manager.plotTwitterDataPoints(plt, ttw_data)
     plt.show()
