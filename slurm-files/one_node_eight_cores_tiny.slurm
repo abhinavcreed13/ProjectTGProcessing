@@ -9,5 +9,5 @@ module load Python/3.5.2-goolf-2015a
 
 # Launch multiple process python code
 echo "----- 1-node-8-cores/tiny -------"
-time mpiexec -n 8 python3 tweet_crawler.py -d tinyTwitter.json
+time mpiexec -n 8 python3 twitter_scanner.py -i tinyTwitter.json -t
 

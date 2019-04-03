@@ -76,7 +76,7 @@ def twitter_json_parser(rank, file_name, size, melboure_grid_data, search_type):
                         line_obj = json.loads(line)
                         ret = {
                             'id': line_obj['doc']['_id'],
-                            'screen_name':line_obj['doc']['user']['screen_name'],
+                            'screen_name': line_obj['doc']['user']['screen_name'],
                             'text': line_obj['doc']['text'],
                             'coordinates': line_obj['doc']['coordinates']['coordinates'],
                             'hashtags': line_obj['doc']['entities']['hashtags']
@@ -321,7 +321,7 @@ if __name__ == '__main__':
     # Read the Melbourne Grid file for finding the details of coordinates for each region
     # It is being run for every process since running it in parallel does not makes sense.
     # Due to its small size, parallel processing will be more time consuming.
-    melbourne_grid_data = melbourne_grid_json_parser('data/melbGrid.json')
+    melbourne_grid_data = melbourne_grid_json_parser('melbGrid.json')
 
     if rank == 0:
         # Leader Node - I Assign work and do some work too simultaneously :)
