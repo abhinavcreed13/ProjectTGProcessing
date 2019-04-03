@@ -6,6 +6,4 @@
 
 ### Running
 
-`python index.py -d data/tTwp.json -tp`
-
-`python index.py -d data/tTwp.json -th`
+`time mpiexec -n 1 python tweet_crawler.py -d data/tinyTwitter.json`
