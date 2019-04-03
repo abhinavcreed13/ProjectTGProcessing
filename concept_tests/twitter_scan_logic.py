@@ -303,3 +303,40 @@ if __name__ == '__main__':
     else:
         # Helper Node - I can help with processing and get the processing get done quickly :D
         helper_node_handler(comm, file_name, search_type, search_query, melbourne_grid_data)
+
+# # Hello World program in Python
+# import operator
+#
+# region_data = {
+#     'E1': 50,
+#     'C3': 10,
+#     'D2': 20,
+#     'A3': 40,
+#     'B2': 30}
+# hashtag_data = {
+#     'E1': {'counts': 50, 'a': 2, 'b': 4, 'c': 3, 'd': 1, 'e': 10, 'f': 7, 'g': 6},
+#     'C3': {'counts': 10, 'a': 3, 'b': 6, 'c': 4, 'd': 3, 'e': 16, 'f': 7, 'g': 6},
+#     'D2': {'counts': 20, 'a': 4, 'b': 6, 'c': 5, 'd': 5, 'e': 23, 'f': 7, 'g': 6},
+#     'A3': {'counts': 40, 'a': 3, 'b': 5, 'c': 8, 'd': 3, 'e': 2, 'f': 7, 'g': 6},
+#     'B2': {'counts': 30, 'a': 1, 'b': 8, 'c': 1, 'd': 7, 'e': 20, 'f': 7, 'g': 6}}
+#
+# print
+# region_data
+# print
+# hashtag_data
+#
+# sorted_counts = sorted(region_data.items(), key=operator.itemgetter(1))
+# print
+# sorted_counts
+#
+# for hashs in hashtag_data.items():
+#     # sort_hash = sorted(hashs.items(), key=operator.itemgetter(1))
+#     print
+#     hashs
+#
+# for regionkey in region_data.keys():
+#     # sort_hash = sorted(hashs.items(), key=operator.itemgetter(1))
+#     # print (hashtag_data[regionkey].values())
+#     sort_hash = sorted(hashtag_data[regionkey].items(), key=operator.itemgetter(1))
+#     print(hashtag_data[regionkey])
+#     print(sort_hash)
