@@ -1,6 +1,6 @@
 from mpi4py import MPI
 from TwitterGeoProcessor.lib.utilities import Utilities
-import json
+import json, re
 
 
 class MpiGeoManager:
@@ -47,7 +47,7 @@ class MpiGeoManager:
             for i in range(size - 1):
                 comm.send('kill', dest=(i + 1), tag=(i + 1))
 
-            print('Merging Total Posts')
+            # print('Merging Total Posts')
             for i, tup in enumerate(final_data[0]):
                 inc_val = tup[1]
                 for child_tup in child_data_arr:
@@ -62,7 +62,7 @@ class MpiGeoManager:
 
             # hash_tags
             # merger
-            print('HashTags Merger')
+            # print('HashTags Merger')
             master_node_dict = final_data[1]
             # print(len(master_node_dict))
             # for data_key in master_node_dict:
@@ -74,7 +74,7 @@ class MpiGeoManager:
                         master_node_dict[data_key] = child_tuple[1][data_key]
 
             # print(len(master_node_dict))
-            print('HashTag Reducer')
+            # print('HashTag Reducer')
             reduced = {}
             reduced_hash = {}
             for data_key in master_node_dict:
@@ -107,7 +107,7 @@ class MpiGeoManager:
         elif size == 1:
             # only 1 thread is running - reducing required
             # hashtags - reducer
-            print('HashTag Reducer')
+            # print('HashTag Reducer')
             # reducer
             # hashtags - reducer
             new_reduced = {}
@@ -181,13 +181,13 @@ class MpiGeoManager:
 
                         # data loading
                         line_obj = json.loads(line)
+
                         ret = {
                             'id': line_obj['doc']['_id'],
                             'text': line_obj['doc']['text'],
                             'coordinates': line_obj['doc']['coordinates']['coordinates'],
-                            'hashtags': line_obj['doc']['entities']['hashtags']
+                            'hashtags': re.findall('[ ]#\w*[ ]', line_obj['doc']['text'])
                         }
-                        # print(ret)
 
                         # get region from tweet object
                         region_key = self.get_region_from_tweet(ret, rank, None)
@@ -232,8 +232,8 @@ class MpiGeoManager:
     def set_hashtags_for_region(self, tweet_obj, region_key, hashtags_dict, rank, file):
         try:
             if region_key is not None:
-                for tags in tweet_obj['hashtags']:
-                    s_key = '#' + tags['text'].lower()
+                for s_key in tweet_obj['hashtags']:
+                    s_key = s_key.lower().strip()
                     if region_key + '||' + s_key in hashtags_dict:
                         hashtags_dict[region_key + '||' + s_key] = hashtags_dict[region_key + '||' + s_key] + 1
                     else:
