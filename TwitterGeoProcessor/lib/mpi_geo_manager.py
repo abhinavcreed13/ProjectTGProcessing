@@ -186,7 +186,7 @@ class MpiGeoManager:
                             'id': line_obj['doc']['_id'],
                             'text': line_obj['doc']['text'],
                             'coordinates': line_obj['doc']['coordinates']['coordinates'],
-                            'hashtags': re.findall('[ ]#\w*[ ]', line_obj['doc']['text'])
+                            'hashtags': Utilities.extract_hashtags_from_text(line_obj['doc']['text'])
                         }
 
                         # get region from tweet object
@@ -233,12 +233,13 @@ class MpiGeoManager:
         try:
             if region_key is not None:
                 for s_key in tweet_obj['hashtags']:
-                    s_key = s_key.lower().strip()
+                    s_key = s_key.lower()
                     if region_key + '||' + s_key in hashtags_dict:
                         hashtags_dict[region_key + '||' + s_key] = hashtags_dict[region_key + '||' + s_key] + 1
                     else:
                         hashtags_dict[region_key + '||' + s_key] = 1
         except Exception as e:
+            # print(str(e))
             pass
         return hashtags_dict
 

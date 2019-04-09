@@ -1,4 +1,5 @@
 import getopt, sys
+import re
 
 
 class Utilities:
@@ -76,3 +77,19 @@ class Utilities:
         # sublist lambda has been used
         list_of_tups.sort(key=lambda x: x[level], reverse=True)
         return list_of_tups
+
+    def extract_hashtags_from_text(text):
+        hashtags = []
+        # create regex pattern
+        regex_p = re.compile('#\w+')
+        txt_len = len(text)
+        for m in regex_p.finditer(text):
+            idx_span = m.span()
+            try:
+                # validate found hashtag
+                if idx_span[0] - 1 >= 0 and idx_span[1] < txt_len:
+                    if text[idx_span[0] - 1] == ' ' and text[idx_span[1]] == ' ':
+                        hashtags.append(m.group())
+            except Exception as e:
+                pass
+        return hashtags
