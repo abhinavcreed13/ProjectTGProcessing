@@ -1,0 +1,41 @@
+---- 1-node-8-cores/big ------
+
+Total number of Twitter posts:
+C2: 145,096 posts
+B2: 79,633 posts
+C3: 53,299 posts
+B3: 26,550 posts
+C4: 19,699 posts
+B1: 16,507 posts
+D4: 14,497 posts
+D3: 13,388 posts
+C1: 8,427 posts
+B4: 5,450 posts
+A3: 5,036 posts
+C5: 4,106 posts
+A2: 4,165 posts
+D5: 3,248 posts
+A1: 2,533 posts
+A4: 310 posts
+
+Top 5 hashtags in each grid cells:
+C2: (('#melbourne', 9777), ('#australia', 1501), ('#job', 1388), ('#jobs', 964), ('#hiring', 469))
+B2: (('#melbourne', 813), ('#australia', 153), ('#auspol', 131), ('#nashsnewvideo', 123), ('#brunswick', 93))
+C3: (('#melbourne', 466), ('#australia', 141), ('#coffee', 100), ('#oneorigin_specialtycoffee', 71), ('#food', 67))
+B3: (('#melbourne', 159), ('#australia', 60), ('#fitness', 54), ('#pocus', 50), ('#britonedirection', 42))
+C4: (('#alishas1million', 96), ('#melbourne', 80), ('#auspol', 49), ('#savedallas', 46), ('#kca', 43))
+B1: (('#melbourne', 170), ('#kca', 69), ('#australia', 56), ('#vote5sos', 55), ('#bds', 49))
+D4: (('#nowplaying', 1730), ('#melbourne', 28), ('#job', 26), ('#jobs', 22), ('#smallzyvampsfirsttix', 20))
+D3: (('#melbourne', 76), ('#beach', 57), ('#joesuggtofollowconniekirk', 28), ('#summer', 26), ('#australia', 23))
+C1: (('#jackdm', 90), ('#mashnewvideo', 57), ('#melbourne', 50), ('#lifeofnash', 43), ('#3daysforexpelledmovie', 40))
+B4: (('#melbourne', 32), ('#smallzywelcomeshome5sos', 26), ('#fire', 19), ('#vicfires', 19), ('#socialmedia', 18))
+A3: (('#vicfires', 19), ('#saveconstantine', 12), ('#mvfc', 7), ('#love', 7), ('#raw', 7))
+C5: (('#melbourne', 53), ('#australia', 17), ('#dandenongs', 13), ('#1000steps', 11), ('#spring', 10))
+A2: (('#krazykristmas', 165), ('#egsholidaygiveaway', 57), ('#rcl1milliongiveaway', 53), ('#vdaywithbeth', 37), ('#egholidaygiveaway', 31))
+D5: (('#somebodytocon', 23), ('#melbourne', 22), ('#lost', 20), ('#voteukvampettes', 18), ('#kca', 12))
+A1: (('#tattoo', 11), ('#melbourne', 11), ('#worldjudo2014', 9), ('#judo', 8), ('#vobis', 8))
+A4: (('#lnp', 4), ('#vicfires', 3), ('#birthday', 3), ('#qldvotes', 3), ('#mytribe', 2))
+
+real	0m56.603s
+user	6m44.656s
+sys	0m46.030s
